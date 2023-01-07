@@ -1,4 +1,4 @@
-# python_udacity
+# Explore US Bikeshare
 from ast import Try
 import time
 import pandas as pd
