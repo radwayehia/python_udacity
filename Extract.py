@@ -1,118 +1,224 @@
-import json
-import string
-import urllib.request
-from pathlib import Path
-from typing import List
+from ast import Try
+import time
+import pandas as pd
+import numpy as np
 
-import requests
-import yt_dlp
-from course_model import CourseModel
-from video_model import VideoModel
+CITY_DATA = { 'chicago': 'chicago.csv',
+              'new york city': 'new_york_city.csv',
+              'washington': 'washington.csv' }
 
-
-def normalize_name(name: str) -> str:
-    return name.translate(str.maketrans("", "", string.punctuation))
-
-
-def download_video_from_stream_url(video_stream_url: str, filepath: str, quality: str) -> None:
-    """Download a video from stream url
-    :param video_stream_url: stream url
-    :param filepath: file path where to download
-    :param quality: quality to select
+def get_filters(): 
+    
     """
-    ydl_opts = {
-        "format": f"bestvideo[height<={quality[:-1]}]+bestaudio/best[height<={quality[:-1]}]/best",
-        "concurrent_fragment_downloads": 15,
-        "outtmpl": f"{filepath}.%(ext)s",
-        "postprocessors": [{"key": "FFmpegFixupM3u8"}],
-        "writesubtitles": True,
-    }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        ydl.download(video_stream_url)
+    Asks user to specify a city, month, and day to analyze.
+
+    Returns:
+        (str) city - name of the city to analyze
+        (str) month - name of the month to filter by, or "all" to apply no month filter
+        (str) day - name of the day of week to filter by, or "all" to apply no day filter
+    """
+    print('Hello! Let\'s explore some US bikeshare data!')
+  # get user input for city (chicago, new york city, washington). HINT: Use a while loop to handle invalid inputs
+
+    city = input("which city data do you want to access? \"chicago ,New york city or Washington\"? \n")
+    Cities_options = ['new york city', 'washington', 'chicago']
+    while city not in Cities_options :
+        print("plz, choose from quoted options in question \"turn off capslk\"")
+        city = input("which city data do you want to access?\"chicago ,New york city or Washington\"\n")
+        
+
+    # get user input for month (all, january, february, ... , june)
+    month = input("In which month are you looking up ? \"jan, fab, mar, apr, may, june, july, august, sept, oct, nov, dec, or all\"? \n")
+    Month_options = ['jan', 'fab', 'mar', 'apr','may', 'june', 'july', 'aug', 'sept', 'oct', 'nov', 'dec','all']
+    while month not in Month_options:
+        print("plz, choose from quoted options in question \"turn off capslk\"\n")
+        month = input("In which month are you looking up ? \"jan, fab, mar, apr, may, june, july, august, sept, oct, nov, dec, or all?\" \n")
+        
+
+    # get user input for day of week (all, monday, tuesday, ... sunday)
+    day = input("In which day are you looking up ? \"saturday, sunday, monday, tuesday, wednesday, thursday, friday saturday or all\"? \n")
+    Days_options  = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday','all']
+    while day not in Days_options:
+        day = input("In which day are you looking up ? \" sunday, monday, tuesday, wednesday, thursday ,friday, saturday or all?\"\n")
+        
+
+    print('-'*40)
+    return city, month, day
 
 
-def request_365datascience_course_api(course_slug: str, authorization_token: str) -> CourseModel:
-    course_api_url = f"https://api.365datascience.com/courses/{course_slug}/player"
-    headers_for_365datascience = {
-        "authority": "api.365datascience.com",
-        "accept": "application/json, text/plain, */*",
-        "accept-language": "en-US,en;q=0.9",
-        "content-type": "application/json;charset=UTF-8",
-        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36 Edg/107.0.1418.26",
-        "Authorization": f"Bearer {authorization_token}",
-    }
-    response = requests.get(course_api_url, headers=headers_for_365datascience)
-    response.raise_for_status()
-    return CourseModel.parse_raw(response.text)
+def filtering(city, month, day):
+    """
+    Loads data for the specified city and filters by month and day if applicable.
+
+    Args:
+        (str) city - name of the city to analyze
+        (str) month - name of the month to filter by, or "all" to apply no month filter
+        (str) day - name of the day of week to filter by, or "all" to apply no day filter
+    Returns:
+        load_data - Pandas DataFrame containing city data filtered by month and day
+    """
+    if city == 'washington':
+        load_data = pd.read_csv('washington.csv')
+        load_data['Start Time'] = pd.to_datetime(load_data['Start Time'])
+        load_data['month'] = load_data['Start Time'].dt.month
+        load_data['day_of_week'] = load_data['Start Time'].dt.day_name()
+        if month != 'all':
+            months = ['jan', 'fab', 'mar', 'apr','may', 'june', 'july', 'aug', 'sept', 'oct', 'nov', 'dec']
+            month = months.index(month) + 1
+            load_data = load_data[load_data['month'] == month]
+        if day != 'all':
+                    load_data = load_data[load_data['day_of_week'] == day.title()]
+    if city == 'new york city':
+        load_data = pd.read_csv('new_york_city.csv')
+        load_data['Start Time'] = pd.to_datetime(load_data['Start Time'])
+        load_data['month'] = load_data['Start Time'].dt.month
+        load_data['day_of_week'] = load_data['Start Time'].dt.day_name()
+        if month != 'all':
+            months = ['jan', 'fab', 'mar', 'apr','may', 'june', 'july', 'aug', 'sept', 'oct', 'nov', 'dec']
+            month = months.index(month) + 1
+            load_data = load_data[load_data['month'] == month]
+        if day != 'all':
+                    load_data = load_data[load_data['day_of_week'] == day.title()]
+    if city == 'chicago':
+        load_data = pd.read_csv('chicago.csv')
+        load_data['Start Time'] = pd.to_datetime(load_data['Start Time'])
+        load_data['month'] = load_data['Start Time'].dt.month
+        load_data['day_of_week'] = load_data['Start Time'].dt.day_name()
+        if month != 'all':
+            months = ['jan', 'fab', 'mar', 'apr','may', 'june', 'july', 'aug', 'sept', 'oct', 'nov', 'dec']
+            month = months.index(month) + 1
+            load_data = load_data[load_data['month'] == month]
+        if day != 'all':
+                    load_data = load_data[load_data['day_of_week'] == day.title()]
+    return load_data
+
+def time_stats(load_data):
+    """Displays statistics on the most frequent times of travel."""
+    print('\nCalculating The Most Frequent Times of Travel...\n')
+    start_time = time.time()
+
+    # display the most common month
+    load_data['Start Time'] = pd.to_datetime(load_data['Start Time'])
+    load_data['month'] = load_data['Start Time'].dt.month
+    popular_month = load_data['month'].mode()[0]
+    print('the most common month: '+str(popular_month)) 
+    # display the most common day of week
+
+    load_data['Start Time'] = pd.to_datetime(load_data['Start Time'])
+    load_data['day'] = load_data['Start Time'].dt.day
+    popular_day = load_data['day'].mode()[0]
+    print('the most common day: '+str(popular_day)) 
+
+    # display the most common start hour
+    load_data['Start Time'] = pd.to_datetime(load_data['Start Time'])
+    load_data['hour'] = load_data['Start Time'].dt.hour
+    popular_hour = load_data['hour'].mode()[0]
+    print('the most common hour: '+str(popular_hour)) 
 
 
-def request_365datascience_course_resource_api(course_slug: str, course_id: int, authorization_token: str) -> List[str]:
-    # TODO: Extract common code from here and request_365datascience_course_api function
-    course_resource_api_url = f"https://api.365datascience.com/courses/file"
-    headers_for_365datascience = {
-        "authority": "api.365datascience.com",
-        "accept": "application/json, text/plain, */*",
-        "accept-language": "en-US,en;q=0.9",
-        "content-type": "application/json;charset=UTF-8",
-        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36 Edg/107.0.1418.26",
-        "Authorization": f"Bearer {authorization_token}",
-    }
-
-    json_data = {
-        "courseId": course_id,
-        "name": f"{course_slug}.zip",
-        "courseZip": True,
-    }
-
-    response = requests.post(course_resource_api_url, headers=headers_for_365datascience, json=json_data)
-    response.raise_for_status()
-    return json.loads(response.text)
+    print("\nThis took %s seconds." % (time.time() - start_time))
+    print('-'*40)
 
 
-def request_brightcove_api(video_id: str, policy_key: str) -> VideoModel:
-    header_for_brightcove = {
-        "authority": "edge.api.brightcove.com",
-        "accept": f"application/json;pk={policy_key}",
-        "accept-language": "en-US,en;q=0.9",
-        "origin": "https://learn.365datascience.com",
-        "referer": "https://learn.365datascience.com/",
-        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36 Edg/107.0.1418.26",
-    }
+def station_stats(load_data):
+    """Displays statistics on the most popular stations and trip."""
 
-    video_api_url = f"https://edge.api.brightcove.com/playback/v1/accounts/6258000438001/videos/{video_id}"
-    response = requests.get(video_api_url, headers=header_for_brightcove)
-    return VideoModel.parse_raw(response.text)
+    print('\nCalculating The Most Popular Stations and Trip...\n')
+    start_time = time.time()
 
+    # display most commonly used start station
+    
+    popular_start_station = load_data['Start Station'].mode()
+    print('the most common start staion: '+str(popular_start_station)) 
 
-def download_course(course_url: str, authorization_token: str, policy_key: str, quality: str) -> None:
-    course_slug = course_url.strip("/").split("/").pop()
-    course_data = request_365datascience_course_api(course_slug, authorization_token)
-
-    for i, section in enumerate(course_data.sections, start=1):
-        for j, asset in enumerate(section.assets, start=1):
-            if asset.type == "lesson" and asset.video:
-                file_path = (
-                    Path(Path.home() / "Downloads")
-                    / "365DataScience"
-                    / normalize_name(course_data.info.name)
-                    / f"{i} - {normalize_name(section.name)}"
-                    / f"{j} - {normalize_name(asset.name)}"
-                )
-                video_data = request_brightcove_api(asset.video.ext_id, policy_key)
-                source = video_data.sources.pop(0)
-                master_m3u8_url = source.src
-                download_video_from_stream_url(master_m3u8_url, file_path, quality)
+    # display most commonly used end station
+    popular_end_station = load_data['End Station'].mode()
+    print('the most common end staion: '+str(popular_end_station)) 
 
 
-def download_course_resource(course_url: str, authorization_token: str) -> None:
-    course_slug = course_url.strip("/").split("/").pop()
-    course_data = request_365datascience_course_api(course_slug, authorization_token)
-    course_resource_urls = request_365datascience_course_resource_api(course_slug, course_data.id, authorization_token)
+    # display most frequent combination of start station and end station trip
+    popular_comp_station = (load_data['Start Station']+","+ ['End Station']).mode()[0]
+    print("the most popular combination: " + str(popular_comp_station.split(',')[0]))
+    print("\nThis took %s seconds." % (time.time() - start_time))
+    print('-'*40)
 
-    for i, course_resource_url in enumerate(course_resource_urls):
-        file_path = (
-            Path(Path.home() / "Downloads")
-            / "365DataScience"
-            / normalize_name(course_data.info.name)
-            / f"{course_slug}_{i}.zip"
-        )
+
+def trip_duration_stats(load_data):
+    """Displays statistics on the total and average trip duration."""
+
+    print('\nCalculating Trip Duration...\n')
+    start_time = time.time()
+
+    # display total travel time
+    total_travel_time = load_data['Trip Duration'].sum()
+    print('total travel time: '+str(total_travel_time))
+    # display mean travel time
+    
+    mean_travel_time = load_data['Trip Duration'].mean()
+    print("the average travel time: "+str(mean_travel_time))
+
+    print("\nThis took %s seconds." % (time.time() - start_time))
+    print('-'*40)
+
+
+def user_stats(load_data):
+    """Displays statistics on bikeshare users."""
+
+    print('\nCalculating User Stats...\n')
+    start_time = time.time()
+
+    # Display counts of user types
+
+    user_type_count = load_data['User Type'].unique()
+    print("the user types count: "+str(len(user_type_count)))
+    # Display counts of gender
+    try:
+        gender_counts = load_data['Gender'].value_counts()
+        print("male: "+str(gender_counts[0]),"female: "+str(gender_counts[1]))
+    except:
+        print()
+
+    # Display earliest, most recent, and most common year of birth
+    
+    try:
+        most_common_birth = load_data['Birth Year'].mode()
+        print("the most common birth year: " + str(most_common_birth[0]))
+        # load_data['Birth Year'] = pd.to_datetime(load_data['Birth Year'])
+        # load_data['year'] = load_data['Birth Year'].dt.year
+        recent_year = load_data['Birth Year'].max()
+        print('the most recent year: '+str(recent_year)) 
+        earlist_year = load_data['Birth Year'].min()
+        print('the earlist year: '+str(earlist_year)) 
+    except:
+        print()
+
+    print("\nThis took %s seconds." % (time.time() - start_time))
+    print('-'*40)
+
+def five_rows(load_data,passing):
+    header = load_data.head(passing)
+    print(header)
+def main():
+    passing = 0
+    while True:
+        city, month, day = get_filters()
+        load_data = filtering(city, month, day)
+
+        time_stats(load_data)
+        station_stats(load_data)
+        trip_duration_stats(load_data)
+        user_stats(load_data)
+        while True:
+            breaker = input("do you want to view the first five row of information?")
+            if breaker.lower() != "yes":
+                break
+            passing += 5
+            five_rows(load_data,passing)
+
+        restart = input('\nWould you like to restart? Enter yes or no.\n')
+        if restart.lower() != 'yes':
+            break
+
+
+if __name__ == "__main__":
+	main()
